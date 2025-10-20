@@ -149,6 +149,8 @@ $('saveBtn').onclick = () => {
   const rest = load().filter(e => e.date !== date);
   const next = [{ date, mood, note }, ...rest];
   save(next);
+  idbPutMany(next).catch(console.warn); // 
+
 
   changeBackground(mood);
 
@@ -376,3 +378,4 @@ window.addEventListener('load', async () => {
 window.addEventListener('storage', (e) => {
   if (e.key === KEY) render();
 });
+
