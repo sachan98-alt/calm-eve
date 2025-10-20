@@ -305,3 +305,74 @@ document.getElementById('importFile')?.addEventListener('change', async (e) => {
     alert('JSONの形式が正しくありませんでした。');
   }
 });
+
+// ===== Strong Local Save (IndexedDB 併用) =====
+const DB_NAME = 'calm-eve-db';
+const DB_STORE = 'entries';
+const DB_VERSION = 1;
+
+// DBを開く（初回はobject store作成）
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(DB_STORE)) {
+        const store = db.createObjectStore(DB_STORE, { keyPath: 'date' });
+        store.createIndex('by_date', 'date');
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// 全件読む
+async function idbReadAll() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readonly');
+    const store = tx.objectStore(DB_STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result.sort((a,b)=> b.date.localeCompare(a.date)));
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// 配列を丸ごと保存（同日付は上書き）
+async function idbPutMany(list) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    const store = tx.objectStore(DB_STORE);
+    list.forEach(item => store.put(item));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// 起動時：localStorage と IndexedDB を突き合わせて自動復元/同期
+window.addEventListener('load', async () => {
+  try {
+    const ls = load();           // 既存: localStorage 読み
+    const dbList = await idbReadAll();  // IndexedDB 読み
+
+    if (ls.length === 0 && dbList.length > 0) {
+      // localStorageが空なら、DBから自動復元
+      save(dbList);
+    } else if (ls.length > 0) {
+      // 何か書いてあればDBにも反映（初回・機種変直後など）
+      await idbPutMany(ls);
+    }
+  } catch (e) {
+    console.warn('IDB init failed', e);
+  } finally {
+    // いつも通り描画
+    render?.();
+  }
+});
+
+// 同一端末でタブを複数開いたときの同期（任意）
+window.addEventListener('storage', (e) => {
+  if (e.key === KEY) render();
+});
