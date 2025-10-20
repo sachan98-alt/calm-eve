@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>Calm Eve</title>
+  <style>
+    /* ===== Theme tokens ===== */
+    :root {
+      /* Light mode (default) */ 
+      --bg: #FAF9F6;
+    --text: #4A4A4A;
+    --card: #FFFFFF;
+    --border: #E5E5E5;
+    --accent: #5C715E;
+
+    --button-grad-start: #A7C7A9;
+    --button-grad-end: #81C784;
+
+    --msg-bg: #F4F8F4;
+
+    }
+
+/* 手動でダーク指定された時（JSが html[data-theme="dark"] を付ける） */
+html[data-theme="dark"] {
+  --bg: #111315;                 /* ダークのベース（気分色で上書きされることも） */
+  --text: #EDEDED;
+  --card: #1A1C1F;
+  --border: #2A2D31;
+  --accent: #B4D0B6;
+
+  --button-grad-start: #3A5A40;
+  --button-grad-end:   #4F7A54;
+
+  --msg-bg: #182019;
+}
+
+/* 端末設定に追従（Auto）のとき： prefers-color-scheme で自動 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111315;
+    --text: #EDEDED;
+    --card: #1A1C1F;
+    --border: #2A2D31;
+    --accent: #B4D0B6;
+
+    --button-grad-start: #3A5A40;
+    --button-grad-end:   #4F7A54;
+
+    --msg-bg: #182019;
+  }
+}
+
+    /* 全体 */
+    html, body {
+      background: var(--bg);
+      transition: background 0.6s ease;
+      min-height: 100%;
+      height: 100%;
+      font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", sans-serif; /* ←修正 */
+      color: #4A4A4A;
+    }
+    body { max-width: 560px; margin: 0 auto; padding: 16px; }
+
+    /* 見出し */
+    h1 { font-size: 24px; font-weight: 600; color: #5C715E; text-align: center; margin-bottom: 20px; }
+
+    /* カード風ボックス */
+    .card {
+      background-color: #FFFFFF;
+      border: 1px solid #E5E5E5;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      padding: 16px; margin: 12px 0;
+    }
+
+    /* 入力系 */
+    select, input {
+      width: 100%; padding: 10px 12px;
+      border: 1px solid #CFCFCF; border-radius: 12px;
+      background-color: #FAFAFA; font-size: 15px;
+    }
+
+    /* ボタン */
+    button {
+      background: linear-gradient(135deg, #A7C7A9, #81C784);
+      border: none; color: white; font-weight: bold;
+      border-radius: 12px; padding: 10px 18px; cursor: pointer; transition: 0.2s;
+    }
+    button:hover { opacity: 0.9; transform: scale(1.02); }
+
+    /* メッセージ */
+    #msg { border-left: 4px solid #A7C7A9; background-color: #F4F8F4; }
+
+    /* 小見出し */
+    h3 { font-size: 18px; color: #5C715E; margin-top: 24px; }
+
+    /* ✅ iPhone向けヒントの見た目（ここに入れる） */
+    #iosTip { background:#FFF8E1; border-color:#FFE082; }
+    #iosTipClose:hover { background:#f6f6f6; }
+  </style>
+</head>
+<body>
+  <h1>🌙Calm Eve (PWA)</h1>
+
+  <div class="card">
+    <!--🌙ここを追加！　テーマ切り替えセレクタ　-->
+    <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:8px;">
+      <label for="themeSelect" style="font-size:13px; align-self:center;">テーマ:</label>
+      <select id="themeSelect" style="max-width:150px;">
+        <option value="auto" selected>自動（端末に合わせる）</option>
+        <option value="light">ライト</option>
+        <option Value="dark">ダーク</option>
+        </select>
+    </div>
+
+    <label for="mood">今日の気分</label>
+    <select id="mood" name="mood">
+      <option value="happy">😄 よき</option>
+      <option value="ok">😐 ふつう</option>
+      <option value="low">😞 しんどい</option>
+    </select>
+    <div style="height:8px"></div>
+    <label for="note">ひとことメモ（任意）</label>
+    <input id="note" name="note" placeholder="ひとことメモ（任意）" />
+    <div style="height:8px"></div>
+    <button id="saveBtn">記録する</button>
+  </div>
+
+  <div id="msg" class="card" style="display:none"></div>
+
+  <h3>7日間の気分</h3>
+  <div class="card">
+    <canvas id="moodChart" height="200"></canvas>
+  </div>
+
+  <button id="installBtn" class="card" style="display:none; width:100%; text-align:center;">
+    📲 Calm Eve をホーム画面に追加
+  </button>
+
+  <!-- ✅ iPhone向けヒントは installBtn の直後に置く -->
+  <div id="iosTip" class="card" style="display:none; font-size:14px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <b>iPhoneの方へ</b>
+      <button id="iosTipClose" style="border:1px solid #ccc; border-radius:8px; background:#fff; padding:4px 8px; cursor:pointer;">
+        閉じる
+      </button>
+    </div>
+    <div style="margin-top:8px; line-height:1.6;">
+      Safariの <b>共有ボタン</b>
+      （<span aria-label="共有ボタン">□</span><span style="display:inline-block; transform: translateY(-1px);">↑</span>）
+      → <b>ホーム画面に追加</b> を選ぶと、Calm Eve をアプリのように使えます🌙
+    </div>
+  </div>
+
+  <h3>直近の記録</h3>
+  <div id="list"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // PWA（サービスワーカー）登録
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
+</body>
+</html>
