@@ -250,3 +250,58 @@ function isStandalone() {
     });
   }
 })();
+
+// ===== Backup / Restore =====
+
+// ✅ バックアップ（JSONダウンロード）
+document.getElementById('exportBtn')?.addEventListener('click', () => {
+  const data = load();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `calm-eve-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+});
+
+// ✅ 復元（ファイル選択ダイアログを開く）
+document.getElementById('importBtn')?.addEventListener('click', () => {
+  document.getElementById('importFile')?.click();
+});
+
+// ✅ 復元（読み込み・置換 or マージ）
+document.getElementById('importFile')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const incoming = JSON.parse(text);
+    if (!Array.isArray(incoming)) throw new Error('Invalid JSON shape');
+
+    const mode = window.prompt('復元モードを入力してください：\n"replace" → データを置き換え\n"merge" → 日付ごとにマージ', 'merge');
+    if (!mode) return;
+
+    const current = load();
+    let next;
+
+    if (mode.toLowerCase() === 'replace') {
+      next = incoming; // 🔄 全置き換え
+    } else {
+      // 🤝 マージ（同じ日付はバックアップ側を優先）
+      const byDate = new Map();
+      current.forEach(e => byDate.set(e.date, e));
+      incoming.forEach(e => byDate.set(e.date, e));
+      next = Array.from(byDate.values())
+        .filter(e => e?.date && e?.mood)
+        .sort((a,b) => b.date.localeCompare(a.date));
+    }
+
+    save(next);
+    render();
+    alert('復元が完了しました！');
+    e.target.value = '';
+  } catch (err) {
+    console.error(err);
+    alert('JSONの形式が正しくありませんでした。');
+  }
+});
