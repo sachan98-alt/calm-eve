@@ -1,5 +1,5 @@
 // ❶ バージョンを上げるたびに文字列を変える（更新検知用）
-const CACHE = 'mood-cache-v10';   // ← v3 から上げる
+const CACHE = 'mood-cache-v11';   // ← v3 から上げる
 const ASSETS = [
   './',
   './index.html',
@@ -51,6 +51,7 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
 
 
 
